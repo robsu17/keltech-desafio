@@ -8,6 +8,10 @@ export const envSchema = z.object({
   DATABASE_URL: z.string(),
   JWT_SECRET: z.string().min(32),
   JWT_EXPIRES_IN: z.string().default('1h'),
+  MONGODB_URI: z.string(),
+  REDIS_HOST: z.string(),
+  REDIS_PORT: z.coerce.number().default(6379),
+  REDIS_PASSWORD: z.string(),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -5,9 +5,18 @@ import { extname } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { DocumentController } from './document.controller';
 import { DocumentService } from './document.service';
+import { MongooseModule } from '@nestjs/mongoose';
+import { ConfigService } from '@nestjs/config';
+import type { Env } from 'src/config/env';
 
 @Module({
   imports: [
+    MongooseModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService<Env>) => ({
+        uri: configService.get<string>('MONGODB_URI'),
+      }),
+    }),
     MulterModule.register({
       storage: diskStorage({
         destination: './uploads',
