@@ -4,6 +4,7 @@ import { DocumentModule } from './modules/document/document.module';
 import { AuthenticationModule } from './modules/authentication/authentication.module';
 import { ConfigModule } from '@nestjs/config';
 import { envSchema } from './config/env';
+import { AppController } from './app.controller';
 
 @Module({
   imports: [
@@ -15,7 +16,7 @@ import { envSchema } from './config/env';
       validate: (config) => envSchema.parse(config),
     }),
   ],
-  controllers: [],
+  controllers: [AppController],
   providers: [],
 })
 export class AppModule {}
