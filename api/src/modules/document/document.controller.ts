@@ -1,15 +1,23 @@
 import {
   Controller,
+  Get,
   MaxFileSizeValidator,
+  Param,
   ParseFilePipe,
   Post,
+  Query,
+  Res,
+  UploadedFile,
   UploadedFiles,
   UseInterceptors,
 } from '@nestjs/common';
-import { FilesInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
+import { memoryStorage } from 'multer';
 import { Roles } from '../authentication/decorators/roles.decorator';
-import { MimeTypeValidator } from './validators/mime-type.validator';
 import { DocumentService } from './document.service';
+import { ListDocumentsDto } from './dto/list-documents.dto';
+import { MimeTypeValidator } from './validators/mime-type.validator';
 
 const MB = 1024 * 1024;
 
@@ -38,5 +46,55 @@ export class DocumentController {
     files: Express.Multer.File[],
   ) {
     return this.documentService.processUploads(files);
+  }
+
+  @Get('stats')
+  @Roles('MANAGER', 'ADMIN')
+  getStats() {
+    return this.documentService.getStats();
+  }
+
+  @Get('report')
+  @Roles('MANAGER', 'ADMIN')
+  async exportCsv(
+    @Query() filters: ListDocumentsDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const csv = await this.documentService.exportCsv(filters);
+    res.set({
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': `attachment; filename="documents-${Date.now()}.csv"`,
+    });
+    return csv;
+  }
+
+  @Get()
+  @Roles('MANAGER', 'ADMIN')
+  listDocuments(@Query() filters: ListDocumentsDto) {
+    return this.documentService.listDocuments(filters);
+  }
+
+  @Post(':id/xml')
+  @Roles('OPERATOR', 'MANAGER', 'ADMIN')
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
+  async uploadXml(
+    @Param('id') documentId: string,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({
+            maxSize: 1 * MB,
+            message: 'O XML deve ter no máximo 1 MB',
+          }),
+          new MimeTypeValidator({
+            allowedMimeTypes: ['text/xml', 'application/xml'],
+            message: 'Tipo de arquivo inválido. Envie um arquivo XML',
+          }),
+        ],
+      }),
+    )
+    file: Express.Multer.File,
+  ) {
+    return this.documentService.fillXML(documentId, file.buffer.toString('utf-8'));
   }
 }

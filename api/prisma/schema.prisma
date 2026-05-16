@@ -42,6 +42,7 @@ model Document {
   status       DocumentStatus @default(PENDING)
   errorMessage String?        @map("error_message")
   processedAt  DateTime?      @map("processed_at")
+  metadata     Json?
   createdAt    DateTime       @default(now()) @map("created_at")
 
   @@map("documents")
