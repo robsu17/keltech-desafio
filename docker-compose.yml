@@ -11,5 +11,18 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
 
+  mongodb:
+    image: mongo:6.0.5
+    container_name: keltech-desafio-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+      MONGO_INITDB_DATABASE: keltech_db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
 volumes:
   db_data:
+  mongo_data:
