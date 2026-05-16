@@ -69,13 +69,13 @@ export class DocumentController {
   }
 
   @Get()
-  @Roles('MANAGER', 'ADMIN')
+  @Roles('OPERATOR', 'MANAGER', 'ADMIN')
   listDocuments(@Query() filters: ListDocumentsDto) {
     return this.documentService.listDocuments(filters);
   }
 
   @Post(':id/xml')
-  @Roles('OPERATOR', 'MANAGER', 'ADMIN')
+  @Roles('OPERATOR')
   @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
   async uploadXml(
     @Param('id') documentId: string,
@@ -95,6 +95,9 @@ export class DocumentController {
     )
     file: Express.Multer.File,
   ) {
-    return this.documentService.fillXML(documentId, file.buffer.toString('utf-8'));
+    return this.documentService.fillXML(
+      documentId,
+      file.buffer.toString('utf-8'),
+    );
   }
 }
