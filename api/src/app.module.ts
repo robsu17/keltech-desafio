@@ -6,10 +6,12 @@ import { DocumentModule } from './modules/document/document.module';
 import { AuthenticationModule } from './modules/authentication/authentication.module';
 import { envSchema, Env } from './config/env';
 import { AppController } from './app.controller';
+import { EmailModule } from './modules/email/email.module';
 
 @Module({
   imports: [
     PrismaModule,
+    EmailModule,
     DocumentModule,
     AuthenticationModule,
     ConfigModule.forRoot({

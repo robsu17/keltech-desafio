@@ -5,4 +5,6 @@ export type DocumentExtractionJobPayload = {
   originalName: string;
   filePath: string;
   mimeType: string;
+  userEmail: string;
+  userName: string;
 };

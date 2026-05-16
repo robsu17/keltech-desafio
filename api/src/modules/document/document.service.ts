@@ -32,7 +32,12 @@ export class DocumentService {
     private readonly extractionQueue: Queue<DocumentExtractionJobPayload>,
   ) {}
 
-  async processUploads(files: Express.Multer.File[]) {
+  async processUploads(files: Express.Multer.File[], userId: string) {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { id: true, name: true, email: true },
+    });
+
     const documents = await this.prisma.$transaction(
       files.map((file) =>
         this.prisma.document.create({
@@ -41,6 +46,7 @@ export class DocumentService {
             mimeType: file.mimetype,
             fileSize: file.size,
             filePath: file.path,
+            uploadedById: user.id,
           },
           select: {
             id: true,
@@ -59,6 +65,8 @@ export class DocumentService {
           originalName: doc.originalName,
           filePath: doc.filePath,
           mimeType: doc.mimeType,
+          userEmail: user.email,
+          userName: user.name,
         });
       }
     }

@@ -14,7 +14,9 @@ import {
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { memoryStorage } from 'multer';
+import { CurrentUser } from '../authentication/decorators/current-user.decorator';
 import { Roles } from '../authentication/decorators/roles.decorator';
+import type { TokenPayload } from '../authentication/types/token-payload';
 import { DocumentService } from './document.service';
 import { ListDocumentsDto } from './dto/list-documents.dto';
 import { MimeTypeValidator } from './validators/mime-type.validator';
@@ -44,8 +46,9 @@ export class DocumentController {
       }),
     )
     files: Express.Multer.File[],
+    @CurrentUser() user: TokenPayload,
   ) {
-    return this.documentService.processUploads(files);
+    return this.documentService.processUploads(files, user.sub);
   }
 
   @Get('stats')

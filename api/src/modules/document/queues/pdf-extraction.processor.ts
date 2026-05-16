@@ -7,6 +7,7 @@ import { readFile } from 'node:fs/promises';
 import { PDFParse } from 'pdf-parse';
 import { createWorker } from 'tesseract.js';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { EmailService } from 'src/modules/email/email.service';
 import {
   DocumentAnalysis,
   DocumentAnalysisDocument,
@@ -36,6 +37,7 @@ export class PdfExtractionProcessor extends WorkerHost {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly email: EmailService,
     @InjectModel(DocumentAnalysis.name)
     private readonly analysisModel: Model<DocumentAnalysisDocument>,
   ) {
@@ -43,7 +45,7 @@ export class PdfExtractionProcessor extends WorkerHost {
   }
 
   async process(job: Job<DocumentExtractionJobPayload>): Promise<void> {
-    const { documentId, originalName, filePath, mimeType } = job.data;
+    const { documentId, originalName, filePath, mimeType, userEmail, userName } = job.data;
     const processedAt = new Date();
 
     try {
@@ -66,14 +68,18 @@ export class PdfExtractionProcessor extends WorkerHost {
           extractedText,
           patterns,
         }),
+        this.email.sendProcessingComplete(userEmail, userName, originalName),
       ]);
 
       this.logger.log(`Documento processado: ${originalName}`);
     } catch (err) {
-      await this.prisma.document.update({
-        where: { id: documentId },
-        data: { status: 'ERROR', errorMessage: err.message, processedAt },
-      });
+      await Promise.all([
+        this.prisma.document.update({
+          where: { id: documentId },
+          data: { status: 'ERROR', errorMessage: err.message, processedAt },
+        }),
+        this.email.sendProcessingError(userEmail, userName, originalName, err.message),
+      ]);
       this.logger.error(`Falha ao processar ${originalName}: ${err.message}`);
       throw err;
     }
