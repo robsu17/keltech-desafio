@@ -5,14 +5,15 @@ import { Job } from 'bullmq';
 import { Model } from 'mongoose';
 import { readFile } from 'node:fs/promises';
 import { PDFParse } from 'pdf-parse';
+import { createWorker } from 'tesseract.js';
 import { PrismaService } from 'src/prisma/prisma.service';
 import {
   DocumentAnalysis,
   DocumentAnalysisDocument,
 } from '../schemas/document-analysis.schema';
 import {
-  PDF_EXTRACTION_QUEUE,
-  PdfExtractionJobPayload,
+  DOCUMENT_EXTRACTION_QUEUE,
+  DocumentExtractionJobPayload,
 } from './pdf-extraction.constants';
 
 /**
@@ -29,7 +30,7 @@ const PATTERNS = {
   cnpjs: /\b\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}\b/g,
 };
 
-@Processor(PDF_EXTRACTION_QUEUE)
+@Processor(DOCUMENT_EXTRACTION_QUEUE)
 export class PdfExtractionProcessor extends WorkerHost {
   private readonly logger = new Logger(PdfExtractionProcessor.name);
 
@@ -41,15 +42,15 @@ export class PdfExtractionProcessor extends WorkerHost {
     super();
   }
 
-  async process(job: Job<PdfExtractionJobPayload>): Promise<void> {
-    const { documentId, originalName, filePath } = job.data;
+  async process(job: Job<DocumentExtractionJobPayload>): Promise<void> {
+    const { documentId, originalName, filePath, mimeType } = job.data;
     const processedAt = new Date();
 
     try {
-      const buffer = await readFile(filePath);
-      const parser = new PDFParse({ data: new Uint8Array(buffer) });
-      const { text: rawText } = await parser.getText();
-      await parser.destroy();
+      const rawText =
+        mimeType === 'application/pdf'
+          ? await this.extractFromPdf(filePath)
+          : await this.extractFromImage(filePath);
 
       const extractedText = this.normalizeText(rawText);
       const patterns = this.extractPatterns(extractedText);
@@ -75,6 +76,24 @@ export class PdfExtractionProcessor extends WorkerHost {
       });
       this.logger.error(`Falha ao processar ${originalName}: ${err.message}`);
       throw err;
+    }
+  }
+
+  private async extractFromPdf(filePath: string): Promise<string> {
+    const buffer = await readFile(filePath);
+    const parser = new PDFParse({ data: new Uint8Array(buffer) });
+    const { text } = await parser.getText();
+    await parser.destroy();
+    return text;
+  }
+
+  private async extractFromImage(filePath: string): Promise<string> {
+    const worker = await createWorker('por+eng');
+    try {
+      const { data } = await worker.recognize(filePath);
+      return data.text;
+    } finally {
+      await worker.terminate();
     }
   }
 

@@ -13,7 +13,7 @@ import {
   DocumentAnalysis,
   DocumentAnalysisSchema,
 } from './schemas/document-analysis.schema';
-import { PDF_EXTRACTION_QUEUE } from './queues/pdf-extraction.constants';
+import { DOCUMENT_EXTRACTION_QUEUE } from './queues/pdf-extraction.constants';
 import { PdfExtractionProcessor } from './queues/pdf-extraction.processor';
 
 @Module({
@@ -27,7 +27,7 @@ import { PdfExtractionProcessor } from './queues/pdf-extraction.processor';
     MongooseModule.forFeature([
       { name: DocumentAnalysis.name, schema: DocumentAnalysisSchema },
     ]),
-    BullModule.registerQueue({ name: PDF_EXTRACTION_QUEUE }),
+    BullModule.registerQueue({ name: DOCUMENT_EXTRACTION_QUEUE }),
     MulterModule.register({
       storage: diskStorage({
         destination: './uploads',

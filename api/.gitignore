@@ -5,3 +5,6 @@ node_modules
 /generated
 
 /uploads
+
+eng.traineddata
+por.traineddata
