@@ -82,60 +82,103 @@ Resumo das principais decisões. Documento completo em [`docs/adr.md`](docs/adr.
 ## Pré-requisitos
 
 - [Docker](https://docs.docker.com/get-docker/) e [Docker Compose](https://docs.docker.com/compose/)
-- [Node.js](https://nodejs.org/) >= 20
-- [npm](https://www.npmjs.com/) >= 10
+- [Node.js](https://nodejs.org/) >= 20 (apenas para desenvolvimento local)
 
 ---
 
 ## Instalação e execução
 
-### 1. Clone o repositório
+### Opção A — Docker (recomendado)
+
+Sobe toda a stack (API + PostgreSQL + MongoDB + Redis) com um único comando.
+
+**1. Clone o repositório**
 
 ```bash
 git clone <url-do-repositorio>
 cd keltech-desafio
 ```
 
-### 2. Suba a infraestrutura (PostgreSQL, MongoDB, Redis)
-
-```bash
-docker-compose up -d
-```
-
-### 3. Configure as variáveis de ambiente
+**2. Configure as variáveis de ambiente**
 
 ```bash
 cp api/.env.example api/.env
 ```
 
-Edite `api/.env` com suas credenciais. As credenciais dos serviços locais já estão preenchidas conforme o `docker-compose.yml` — preencha apenas `JWT_SECRET` e as credenciais SMTP.
+Edite `api/.env` preenchendo `JWT_SECRET` e as credenciais SMTP. As demais variáveis já estão configuradas para os serviços do docker-compose.
 
-### 4. Instale as dependências
+**3. Suba toda a stack**
+
+```bash
+docker-compose up -d
+```
+
+O docker-compose irá:
+- Construir a imagem da API
+- Aguardar os serviços de banco ficarem saudáveis (`healthcheck`)
+- Aplicar as migrations automaticamente na inicialização
+- Expor a API em `http://localhost:3333`
+
+**4. Popule o banco com usuários de seed**
+
+```bash
+docker-compose exec api npx prisma db seed
+```
+
+**Comandos úteis:**
+
+```bash
+# Ver logs da API em tempo real
+docker-compose logs -f api
+
+# Parar todos os serviços
+docker-compose down
+
+# Parar e remover volumes (apaga dados dos bancos)
+docker-compose down -v
+
+# Reconstruir a imagem após alterações no código
+docker-compose up -d --build api
+```
+
+---
+
+### Opção B — Desenvolvimento local
+
+**1. Suba apenas a infraestrutura**
+
+```bash
+docker-compose up -d db mongodb redis
+```
+
+**2. Configure as variáveis de ambiente**
+
+```bash
+cp api/.env.example api/.env
+# Edite api/.env com JWT_SECRET e credenciais SMTP
+```
+
+**3. Instale as dependências**
 
 ```bash
 cd api
 npm install
 ```
 
-### 5. Execute as migrations e popule o banco
+**4. Execute as migrations e popule o banco**
 
 ```bash
-# Cria as tabelas no PostgreSQL
 npx prisma migrate dev
-
-# Cria os usuários de seed (operator, manager, admin)
 npx prisma db seed
 ```
 
-### 6. Inicie a API
+**5. Inicie a API com hot reload**
 
 ```bash
-# Desenvolvimento (hot reload)
 npm run start:dev
-
-# Produção
-npm run build && npm run start:prod
 ```
+
+A API estará disponível em `http://localhost:3333`.
 
 A API estará disponível em `http://localhost:3333`.
 

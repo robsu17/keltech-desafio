@@ -1,4 +1,24 @@
 services:
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: keltech-api
+    ports:
+      - "${PORT:-3333}:3333"
+    env_file:
+      - ./api/.env
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
   db:
     image: postgres:15.3-alpine
     container_name: keltech-desafio-db
@@ -10,14 +30,25 @@ services:
       - "5432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
 
   redis:
-    image: redis:7.0.5
+    image: redis:7.0.5-alpine
     container_name: keltech-desafio-redis
-    environment:
-      REDIS_PASSWORD: your_redis_password
+    command: redis-server --requirepass ${REDIS_PASSWORD:-your_redis_password}
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
 
   mongodb:
     image: mongo:6.0.5
@@ -30,7 +61,14 @@ services:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
 
 volumes:
   db_data:
   mongo_data:
+  uploads_data:
