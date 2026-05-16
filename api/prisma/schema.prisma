@@ -26,3 +26,14 @@ model User {
 
   @@map("users")
 }
+
+model Document {
+  id           String   @id @default(uuid())
+  originalName String   @map("original_name")
+  mimeType     String   @map("mime_type")
+  fileSize     Int      @map("file_size")
+  filePath     String   @map("file_path")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("documents")
+}

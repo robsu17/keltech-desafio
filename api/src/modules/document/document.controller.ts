@@ -9,11 +9,14 @@ import {
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { Roles } from '../authentication/decorators/roles.decorator';
 import { MimeTypeValidator } from './validators/mime-type.validator';
+import { DocumentService } from './document.service';
 
 const MB = 1024 * 1024;
 
 @Controller('document')
 export class DocumentController {
+  constructor(private readonly documentService: DocumentService) {}
+
   @Post('upload')
   @Roles('OPERATOR')
   @UseInterceptors(FilesInterceptor('files'))
@@ -34,11 +37,6 @@ export class DocumentController {
     )
     files: Express.Multer.File[],
   ) {
-    return files.map((file) => ({
-      originalName: file.originalname,
-      mimeType: file.mimetype,
-      size: file.size,
-      path: file.path,
-    }));
+    return this.documentService.processUploads(files);
   }
 }
