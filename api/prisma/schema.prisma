@@ -15,6 +15,12 @@ enum Role {
   ADMIN    @map("admin")
 }
 
+enum DocumentStatus {
+  PENDING   @map("pending")
+  PROCESSED @map("processed")
+  ERROR     @map("error")
+}
+
 model User {
   id    String @id @default(uuid())
   name  String
@@ -28,12 +34,15 @@ model User {
 }
 
 model Document {
-  id           String   @id @default(uuid())
-  originalName String   @map("original_name")
-  mimeType     String   @map("mime_type")
-  fileSize     Int      @map("file_size")
-  filePath     String   @map("file_path")
-  createdAt    DateTime @default(now()) @map("created_at")
+  id           String         @id @default(uuid())
+  originalName String         @map("original_name")
+  mimeType     String         @map("mime_type")
+  fileSize     Int            @map("file_size")
+  filePath     String         @map("file_path")
+  status       DocumentStatus @default(PENDING)
+  errorMessage String?        @map("error_message")
+  processedAt  DateTime?      @map("processed_at")
+  createdAt    DateTime       @default(now()) @map("created_at")
 
   @@map("documents")
 }

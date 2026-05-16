@@ -1,12 +1,19 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import { Job } from 'bullmq';
 import { Model } from 'mongoose';
 import { readFile } from 'node:fs/promises';
 import { PDFParse } from 'pdf-parse';
+import { PrismaService } from 'src/prisma/prisma.service';
 import {
   DocumentAnalysis,
   DocumentAnalysisDocument,
 } from '../schemas/document-analysis.schema';
+import {
+  PDF_EXTRACTION_QUEUE,
+  PdfExtractionJobPayload,
+} from './pdf-extraction.constants';
 
 /**
  * Padrões identificados:
@@ -22,21 +29,21 @@ const PATTERNS = {
   cnpjs: /\b\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}\b/g,
 };
 
-@Injectable()
-export class PdfExtractionService {
-  private readonly logger = new Logger(PdfExtractionService.name);
+@Processor(PDF_EXTRACTION_QUEUE)
+export class PdfExtractionProcessor extends WorkerHost {
+  private readonly logger = new Logger(PdfExtractionProcessor.name);
 
   constructor(
+    private readonly prisma: PrismaService,
     @InjectModel(DocumentAnalysis.name)
     private readonly analysisModel: Model<DocumentAnalysisDocument>,
-  ) {}
+  ) {
+    super();
+  }
 
-  async extract(documentId: string, originalName: string, filePath: string) {
-    const record = await this.analysisModel.create({
-      documentId,
-      originalName,
-      status: 'pending',
-    });
+  async process(job: Job<PdfExtractionJobPayload>): Promise<void> {
+    const { documentId, originalName, filePath } = job.data;
+    const processedAt = new Date();
 
     try {
       const buffer = await readFile(filePath);
@@ -47,19 +54,27 @@ export class PdfExtractionService {
       const extractedText = this.normalizeText(rawText);
       const patterns = this.extractPatterns(extractedText);
 
-      await record.updateOne({
-        status: 'processed',
-        extractedText,
-        patterns,
-        processedAt: new Date(),
-      });
+      await Promise.all([
+        this.prisma.document.update({
+          where: { id: documentId },
+          data: { status: 'PROCESSED', processedAt },
+        }),
+        this.analysisModel.create({
+          documentId,
+          originalName,
+          extractedText,
+          patterns,
+        }),
+      ]);
+
+      this.logger.log(`Documento processado: ${originalName}`);
     } catch (err) {
-      this.logger.error(`Falha ao processar ${originalName}: ${err.message}`);
-      await record.updateOne({
-        status: 'error',
-        errorMessage: err.message,
-        processedAt: new Date(),
+      await this.prisma.document.update({
+        where: { id: documentId },
+        data: { status: 'ERROR', errorMessage: err.message, processedAt },
       });
+      this.logger.error(`Falha ao processar ${originalName}: ${err.message}`);
+      throw err;
     }
   }
 
@@ -72,8 +87,7 @@ export class PdfExtractionService {
   }
 
   private extractPatterns(text: string) {
-    const match = (pattern: RegExp) =>
-      [...new Set(text.match(pattern) ?? [])];
+    const match = (pattern: RegExp) => [...new Set(text.match(pattern) ?? [])];
 
     return {
       dates: match(PATTERNS.dates),

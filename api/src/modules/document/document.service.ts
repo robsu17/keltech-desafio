@@ -1,12 +1,18 @@
+import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
+import { Queue } from 'bullmq';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { PdfExtractionService } from './services/pdf-extraction.service';
+import {
+  PDF_EXTRACTION_QUEUE,
+  PdfExtractionJobPayload,
+} from './queues/pdf-extraction.constants';
 
 @Injectable()
 export class DocumentService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly pdfExtraction: PdfExtractionService,
+    @InjectQueue(PDF_EXTRACTION_QUEUE)
+    private readonly pdfQueue: Queue<PdfExtractionJobPayload>,
   ) {}
 
   async processUploads(files: Express.Multer.File[]) {
@@ -26,7 +32,11 @@ export class DocumentService {
 
     for (const doc of documents) {
       if (doc.mimeType === 'application/pdf') {
-        this.pdfExtraction.extract(doc.id, doc.originalName, doc.filePath);
+        await this.pdfQueue.add('extract', {
+          documentId: doc.id,
+          originalName: doc.originalName,
+          filePath: doc.filePath,
+        });
       }
     }
 
