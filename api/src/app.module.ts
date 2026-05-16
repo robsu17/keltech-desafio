@@ -5,7 +5,6 @@ import { AuthenticationModule } from './modules/authentication/authentication.mo
 import { ConfigModule } from '@nestjs/config';
 import { envSchema } from './config/env';
 import { AppController } from './app.controller';
-import { MulterModule } from '@nestjs/platform-express';
 
 @Module({
   imports: [
@@ -15,20 +14,6 @@ import { MulterModule } from '@nestjs/platform-express';
     ConfigModule.forRoot({
       isGlobal: true,
       validate: (config) => envSchema.parse(config),
-    }),
-    MulterModule.register({
-      dest: './uploads',
-      limits: {
-        fileSize: 25 * 1024 * 1024,
-      },
-      fileFilter(_req, file, callback) {
-        const allowedMimes = ['application/pdf', 'image/png'];
-        if (allowedMimes.includes(file.mimetype)) {
-          callback(null, true);
-        } else {
-          callback(new Error('Only PDF and PNG files are allowed'), false);
-        }
-      },
     }),
   ],
   controllers: [AppController],
