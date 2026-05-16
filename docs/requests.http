@@ -1,0 +1,302 @@
+# Keltech API — Coleção de requisições
+# Compatível com VS Code REST Client (extensão humao.rest-client)
+# e com o IntelliJ HTTP Client
+#
+# Como usar:
+#   1. Instale a extensão "REST Client" no VS Code
+#   2. Copie o token retornado no login e cole em @token abaixo
+#   3. Clique em "Send Request" acima de cada requisição
+
+@baseUrl = http://localhost:3333
+
+# ─────────────────────────────────────────────
+# Cole aqui o token retornado no login
+# ─────────────────────────────────────────────
+@token = SEU_TOKEN_AQUI
+
+# ─────────────────────────────────────────────
+# Cole aqui um ID de documento retornado no upload
+# ─────────────────────────────────────────────
+@documentId = SEU_DOCUMENT_ID_AQUI
+
+
+###
+# ════════════════════════════════════════
+# SAÚDE
+# ════════════════════════════════════════
+
+### GET /health — Verifica se a API está no ar (rota pública)
+GET {{baseUrl}}/health
+
+
+###
+# ════════════════════════════════════════
+# AUTENTICAÇÃO
+# ════════════════════════════════════════
+
+### POST /auth/login — Login como OPERATOR
+# @name loginOperator
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "operator@keltech.com",
+  "password": "password123"
+}
+
+---
+
+### POST /auth/login — Login como MANAGER
+# @name loginManager
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "manager@keltech.com",
+  "password": "password123"
+}
+
+---
+
+### POST /auth/login — Login como ADMIN
+# @name loginAdmin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@keltech.com",
+  "password": "password123"
+}
+
+---
+
+### POST /auth/login — Credenciais inválidas (espera 401)
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "naoexiste@keltech.com",
+  "password": "senhaerrada"
+}
+
+---
+
+### POST /auth/login — Body inválido (espera 400)
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "nao-e-um-email",
+  "password": "123"
+}
+
+
+###
+# ════════════════════════════════════════
+# DOCUMENTOS — UPLOAD (OPERATOR)
+# ════════════════════════════════════════
+
+### POST /document/upload — Upload de PDF
+# Requer: cargo OPERATOR
+# Substitua o caminho pelo arquivo real
+POST {{baseUrl}}/document/upload
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=boundary
+
+--boundary
+Content-Disposition: form-data; name="files"; filename="contrato.pdf"
+Content-Type: application/pdf
+
+< ./contrato.pdf
+--boundary--
+
+---
+
+### POST /document/upload — Arquivo com tipo inválido (espera 400)
+POST {{baseUrl}}/document/upload
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=boundary
+
+--boundary
+Content-Disposition: form-data; name="files"; filename="planilha.xlsx"
+Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+
+< ./planilha.xlsx
+--boundary--
+
+---
+
+### POST /document/upload — Sem token (espera 401)
+POST {{baseUrl}}/document/upload
+Content-Type: multipart/form-data; boundary=boundary
+
+--boundary
+Content-Disposition: form-data; name="files"; filename="arquivo.pdf"
+Content-Type: application/pdf
+
+< ./arquivo.pdf
+--boundary--
+
+
+###
+# ════════════════════════════════════════
+# DOCUMENTOS — ENRIQUECIMENTO XML (OPERATOR)
+# ════════════════════════════════════════
+
+### POST /document/:id/xml — Enriquece documento com metadados XML
+# Requer: cargo OPERATOR
+POST {{baseUrl}}/document/{{documentId}}/xml
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=xmlboundary
+
+--xmlboundary
+Content-Disposition: form-data; name="file"; filename="metadata.xml"
+Content-Type: text/xml
+
+<?xml version="1.0" encoding="UTF-8"?>
+<document-metadata>
+  <type>invoice</type>
+  <issuedAt>25/12/2024</issuedAt>
+  <issuer>
+    <name>Empresa ABC Ltda</name>
+    <document>12.345.678/0001-99</document>
+  </issuer>
+  <recipient>
+    <name>João Silva</name>
+    <document>123.456.789-00</document>
+  </recipient>
+  <reference>NF-2024/001</reference>
+  <dueAt>25/01/2025</dueAt>
+  <total>1500.00</total>
+  <currency>BRL</currency>
+  <notes>Referente ao contrato X</notes>
+</document-metadata>
+--xmlboundary--
+
+---
+
+### POST /document/:id/xml — XML inválido (espera 400)
+POST {{baseUrl}}/document/{{documentId}}/xml
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=xmlboundary
+
+--xmlboundary
+Content-Disposition: form-data; name="file"; filename="metadata.xml"
+Content-Type: text/xml
+
+<?xml version="1.0" encoding="UTF-8"?>
+<document-metadata>
+  <type>tipo-inexistente</type>
+</document-metadata>
+--xmlboundary--
+
+---
+
+### POST /document/:id/xml — ID inexistente (espera 404)
+POST {{baseUrl}}/document/00000000-0000-0000-0000-000000000000/xml
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=xmlboundary
+
+--xmlboundary
+Content-Disposition: form-data; name="file"; filename="metadata.xml"
+Content-Type: text/xml
+
+<?xml version="1.0" encoding="UTF-8"?>
+<document-metadata>
+  <type>contract</type>
+  <issuedAt>01/01/2025</issuedAt>
+  <issuer>
+    <name>Empresa X</name>
+    <document>12.345.678/0001-99</document>
+  </issuer>
+  <recipient>
+    <name>Cliente Y</name>
+    <document>123.456.789-00</document>
+  </recipient>
+</document-metadata>
+--xmlboundary--
+
+
+###
+# ════════════════════════════════════════
+# DOCUMENTOS — LISTAGEM
+# ════════════════════════════════════════
+
+### GET /document — Lista todos os documentos (sem filtros)
+# Requer: OPERATOR, MANAGER ou ADMIN
+GET {{baseUrl}}/document
+Authorization: Bearer {{token}}
+
+---
+
+### GET /document — Filtra por status PROCESSED
+GET {{baseUrl}}/document?status=PROCESSED
+Authorization: Bearer {{token}}
+
+---
+
+### GET /document — Filtra por status ERROR
+GET {{baseUrl}}/document?status=ERROR
+Authorization: Bearer {{token}}
+
+---
+
+### GET /document — Filtra por período
+GET {{baseUrl}}/document?from=2024-01-01&to=2024-12-31
+Authorization: Bearer {{token}}
+
+---
+
+### GET /document — Filtra apenas documentos com XML enriquecido
+GET {{baseUrl}}/document?hasMetadata=true
+Authorization: Bearer {{token}}
+
+---
+
+### GET /document — Filtra documentos sem XML enriquecido
+GET {{baseUrl}}/document?hasMetadata=false
+Authorization: Bearer {{token}}
+
+---
+
+### GET /document — Combinação de filtros com paginação
+GET {{baseUrl}}/document?status=PROCESSED&hasMetadata=true&from=2024-01-01&page=1&limit=10
+Authorization: Bearer {{token}}
+
+
+###
+# ════════════════════════════════════════
+# DOCUMENTOS — RELATÓRIOS (MANAGER / ADMIN)
+# ════════════════════════════════════════
+
+### GET /document/stats — Totais por status e por período
+# Requer: MANAGER ou ADMIN
+GET {{baseUrl}}/document/stats
+Authorization: Bearer {{token}}
+
+---
+
+### GET /document/report — Exporta CSV completo
+# Requer: MANAGER ou ADMIN
+# O download é iniciado automaticamente pelo navegador
+GET {{baseUrl}}/document/report
+Authorization: Bearer {{token}}
+
+---
+
+### GET /document/report — Exporta CSV filtrado por status e período
+GET {{baseUrl}}/document/report?status=PROCESSED&from=2024-01-01&to=2024-12-31
+Authorization: Bearer {{token}}
+
+---
+
+### GET /document/report — Exporta apenas documentos com XML
+GET {{baseUrl}}/document/report?hasMetadata=true
+Authorization: Bearer {{token}}
+
+---
+
+### GET /document/stats — Sem permissão (OPERATOR tentando acessar stats, espera 403)
+# Para testar, faça login como operator e cole o token operator aqui
+GET {{baseUrl}}/document/stats
+Authorization: Bearer {{token}}
