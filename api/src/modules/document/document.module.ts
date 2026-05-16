@@ -8,6 +8,8 @@ import { DocumentService } from './document.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigService } from '@nestjs/config';
 import type { Env } from 'src/config/env';
+import { DocumentAnalysis, DocumentAnalysisSchema } from './schemas/document-analysis.schema';
+import { PdfExtractionService } from './services/pdf-extraction.service';
 
 @Module({
   imports: [
@@ -17,6 +19,9 @@ import type { Env } from 'src/config/env';
         uri: configService.get<string>('MONGODB_URI'),
       }),
     }),
+    MongooseModule.forFeature([
+      { name: DocumentAnalysis.name, schema: DocumentAnalysisSchema },
+    ]),
     MulterModule.register({
       storage: diskStorage({
         destination: './uploads',
@@ -33,6 +38,6 @@ import type { Env } from 'src/config/env';
     }),
   ],
   controllers: [DocumentController],
-  providers: [DocumentService],
+  providers: [DocumentService, PdfExtractionService],
 })
 export class DocumentModule {}
