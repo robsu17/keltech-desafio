@@ -25,9 +25,7 @@ export class JwtAuthGuard implements CanActivate {
 
     if (isPublic) return true;
 
-    const request = context
-      .switchToHttp()
-      .getRequest<Request & { user?: TokenPayload }>();
+    const request = context.switchToHttp().getRequest<Request>();
 
     const token = this.extractToken(request);
     if (!token) throw new UnauthorizedException('Token não informado');

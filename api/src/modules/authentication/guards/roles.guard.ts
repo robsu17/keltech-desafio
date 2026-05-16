@@ -8,7 +8,6 @@ import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import type { Role } from '../../../../generated/prisma/enums';
 import { ROLES_KEY } from '../decorators/roles.decorator';
-import type { TokenPayload } from '../types/token-payload';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -22,9 +21,7 @@ export class RolesGuard implements CanActivate {
 
     if (!requiredRoles || requiredRoles.length === 0) return true;
 
-    const request = context
-      .switchToHttp()
-      .getRequest<Request & { user?: TokenPayload }>();
+    const request = context.switchToHttp().getRequest<Request>();
 
     if (!request.user) {
       throw new ForbiddenException('Usuário não autenticado');
